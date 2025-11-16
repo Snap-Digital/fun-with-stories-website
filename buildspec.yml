@@ -69,8 +69,8 @@ phases:
       - echo "Files to be deployed:"
       - ls -lah
       - echo "Syncing files to S3 with metadata and cache-control headers..."
-      # Sync HTML files with short cache (5 minutes)
       - |
+        # Sync HTML files with short cache (5 minutes)
         echo "Uploading HTML files..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*" \
@@ -79,8 +79,8 @@ phases:
           --cache-control "public, max-age=300" \
           --metadata-directive REPLACE \
           --delete
-      # Sync CSS files with long cache (1 week)
       - |
+        # Sync CSS files with long cache (1 week)
         echo "Uploading CSS files..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*" \
@@ -89,8 +89,8 @@ phases:
           --cache-control "public, max-age=604800" \
           --metadata-directive REPLACE \
           --delete
-      # Sync JavaScript files with long cache (1 week)
       - |
+        # Sync JavaScript files with long cache (1 week)
         echo "Uploading JavaScript files..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*" \
@@ -99,8 +99,8 @@ phases:
           --cache-control "public, max-age=604800" \
           --metadata-directive REPLACE \
           --delete
-      # Sync PNG images with long cache (30 days)
       - |
+        # Sync PNG images with long cache (30 days)
         echo "Uploading PNG images..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*" \
@@ -109,8 +109,8 @@ phases:
           --cache-control "public, max-age=2592000" \
           --metadata-directive REPLACE \
           --delete
-      # Sync JPG/JPEG images with long cache (30 days)
       - |
+        # Sync JPG/JPEG images with long cache (30 days)
         echo "Uploading JPG/JPEG images..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*" \
@@ -120,8 +120,8 @@ phases:
           --cache-control "public, max-age=2592000" \
           --metadata-directive REPLACE \
           --delete
-      # Sync other files (CNAME, etc.) with default settings
       - |
+        # Sync other files (CNAME, etc.) with default settings
         echo "Uploading other files..."
         aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
           --exclude "*.html" \
@@ -140,8 +140,8 @@ phases:
   post_build:
     commands:
       - echo "Post-build phase started on $(date)"
-      # Configure S3 bucket for static website hosting (only for production)
       - |
+        # Configure S3 bucket for static website hosting (only for production)
         if [ "$DEPLOY_FOLDER" = "production" ]; then
           echo "Configuring S3 bucket for static website hosting..."
           aws s3 website "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
