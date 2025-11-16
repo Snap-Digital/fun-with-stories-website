@@ -28,23 +28,23 @@ phases:
         # Determine the branch name
         echo "Detecting current branch..."
         if [ -n "$CODEBUILD_WEBHOOK_HEAD_REF" ]; then
-          BRANCH_NAME=$(echo $CODEBUILD_WEBHOOK_HEAD_REF | sed 's/refs\/heads\///')
+          export BRANCH_NAME=$(echo $CODEBUILD_WEBHOOK_HEAD_REF | sed 's/refs\/heads\///')
         elif [ -n "$CODEBUILD_SOURCE_VERSION" ]; then
-          BRANCH_NAME=$CODEBUILD_SOURCE_VERSION
+          export BRANCH_NAME=$CODEBUILD_SOURCE_VERSION
         else
-          BRANCH_NAME="main"
+          export BRANCH_NAME="main"
         fi
         echo "Detected branch: $BRANCH_NAME"
         # Map branch to deployment folder
         case "$BRANCH_NAME" in
           main)
-            DEPLOY_FOLDER="production"
+            export DEPLOY_FOLDER="production"
             ;;
           staging)
-            DEPLOY_FOLDER="staging"
+            export DEPLOY_FOLDER="staging"
             ;;
           development)
-            DEPLOY_FOLDER="development"
+            export DEPLOY_FOLDER="development"
             ;;
           *)
             echo "ERROR: Unknown branch '$BRANCH_NAME'. Supported branches: main, staging, development"
@@ -150,17 +150,17 @@ phases:
         else
           echo "Skipping website configuration for non-production environment"
         fi
-      - echo "========================================="
-      - echo "Deployment completed successfully!"
-      - echo "Environment: $DEPLOY_FOLDER"
-      - echo "Branch: $BRANCH_NAME"
-      - echo "S3 Location: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
       - |
+        echo "========================================="
+        echo "Deployment completed successfully!"
+        echo "Environment: $DEPLOY_FOLDER"
+        echo "Branch: $BRANCH_NAME"
+        echo "S3 Location: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
         if [ "$DEPLOY_FOLDER" = "production" ]; then
           echo "Website URL: http://$S3_BUCKET.s3-website-$(aws configure get region).amazonaws.com/$DEPLOY_FOLDER/"
         fi
-      - echo "Deployment timestamp: $(date)"
-      - echo "========================================="
+        echo "Deployment timestamp: $(date)"
+        echo "========================================="
 
 artifacts:
   files:
