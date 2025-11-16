@@ -24,9 +24,9 @@ phases:
   pre_build:
     commands:
       - echo "Pre-build phase started on $(date)"
-      - echo "Detecting current branch..."
       - |
         # Determine the branch name
+        echo "Detecting current branch..."
         if [ -n "$CODEBUILD_WEBHOOK_HEAD_REF" ]; then
           BRANCH_NAME=$(echo $CODEBUILD_WEBHOOK_HEAD_REF | sed 's/refs\/heads\///')
         elif [ -n "$CODEBUILD_SOURCE_VERSION" ]; then
@@ -35,7 +35,6 @@ phases:
           BRANCH_NAME="main"
         fi
         echo "Detected branch: $BRANCH_NAME"
-      - |
         # Map branch to deployment folder
         case "$BRANCH_NAME" in
           main)
@@ -53,9 +52,8 @@ phases:
             ;;
         esac
         echo "Deployment folder: $DEPLOY_FOLDER"
-      - echo "S3 Bucket: $S3_BUCKET"
-      - echo "Deployment target: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
-      - |
+        echo "S3 Bucket: $S3_BUCKET"
+        echo "Deployment target: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
         # Verify S3 bucket exists and is accessible
         if aws s3 ls "s3://$S3_BUCKET" > /dev/null 2>&1; then
           echo "S3 bucket '$S3_BUCKET' is accessible"
