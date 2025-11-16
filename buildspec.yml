@@ -1,0 +1,187 @@
+version: 0.2
+
+# AWS CodeBuild BuildSpec for Multi-Environment S3 Deployment
+# Deploys static website to different S3 folders based on branch:
+# - main branch -> /production
+# - staging branch -> /staging
+# - development branch -> /development
+
+env:
+  variables:
+    # Set this in CodeBuild project environment variables
+    # S3_BUCKET: "your-bucket-name"
+  git-credential-helper: yes
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Installing dependencies..."
+      - pip install --upgrade awscli
+      - aws --version
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase started on $(date)"
+      - echo "Detecting current branch..."
+      - |
+        # Determine the branch name
+        if [ -n "$CODEBUILD_WEBHOOK_HEAD_REF" ]; then
+          BRANCH_NAME=$(echo $CODEBUILD_WEBHOOK_HEAD_REF | sed 's/refs\/heads\///')
+        elif [ -n "$CODEBUILD_SOURCE_VERSION" ]; then
+          BRANCH_NAME=$CODEBUILD_SOURCE_VERSION
+        else
+          BRANCH_NAME="main"
+        fi
+        echo "Detected branch: $BRANCH_NAME"
+
+      - |
+        # Map branch to deployment folder
+        case "$BRANCH_NAME" in
+          main)
+            DEPLOY_FOLDER="production"
+            ;;
+          staging)
+            DEPLOY_FOLDER="staging"
+            ;;
+          development)
+            DEPLOY_FOLDER="development"
+            ;;
+          *)
+            echo "ERROR: Unknown branch '$BRANCH_NAME'. Supported branches: main, staging, development"
+            exit 1
+            ;;
+        esac
+        echo "Deployment folder: $DEPLOY_FOLDER"
+
+      - echo "S3 Bucket: $S3_BUCKET"
+      - echo "Deployment target: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
+
+      - |
+        # Verify S3 bucket exists and is accessible
+        if aws s3 ls "s3://$S3_BUCKET" > /dev/null 2>&1; then
+          echo "S3 bucket '$S3_BUCKET' is accessible"
+        else
+          echo "ERROR: Cannot access S3 bucket '$S3_BUCKET'"
+          exit 1
+        fi
+
+  build:
+    commands:
+      - echo "Build phase started on $(date)"
+      - echo "Preparing files for deployment to $DEPLOY_FOLDER environment..."
+
+      - echo "Files to be deployed:"
+      - ls -lah
+
+      - echo "Syncing files to S3 with metadata and cache-control headers..."
+
+      # Sync HTML files with short cache (5 minutes)
+      - |
+        echo "Uploading HTML files..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*" \
+          --include "*.html" \
+          --content-type "text/html; charset=utf-8" \
+          --cache-control "public, max-age=300" \
+          --metadata-directive REPLACE \
+          --delete
+
+      # Sync CSS files with long cache (1 week)
+      - |
+        echo "Uploading CSS files..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*" \
+          --include "*.css" \
+          --content-type "text/css; charset=utf-8" \
+          --cache-control "public, max-age=604800" \
+          --metadata-directive REPLACE \
+          --delete
+
+      # Sync JavaScript files with long cache (1 week)
+      - |
+        echo "Uploading JavaScript files..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*" \
+          --include "*.js" \
+          --content-type "application/javascript; charset=utf-8" \
+          --cache-control "public, max-age=604800" \
+          --metadata-directive REPLACE \
+          --delete
+
+      # Sync PNG images with long cache (30 days)
+      - |
+        echo "Uploading PNG images..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*" \
+          --include "*.png" \
+          --content-type "image/png" \
+          --cache-control "public, max-age=2592000" \
+          --metadata-directive REPLACE \
+          --delete
+
+      # Sync JPG/JPEG images with long cache (30 days)
+      - |
+        echo "Uploading JPG/JPEG images..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*" \
+          --include "*.jpg" \
+          --include "*.jpeg" \
+          --content-type "image/jpeg" \
+          --cache-control "public, max-age=2592000" \
+          --metadata-directive REPLACE \
+          --delete
+
+      # Sync other files (CNAME, etc.) with default settings
+      - |
+        echo "Uploading other files..."
+        aws s3 sync . "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+          --exclude "*.html" \
+          --exclude "*.css" \
+          --exclude "*.js" \
+          --exclude "*.png" \
+          --exclude "*.jpg" \
+          --exclude "*.jpeg" \
+          --exclude ".git/*" \
+          --exclude ".github/*" \
+          --exclude "buildspec.yml" \
+          --exclude "README.md" \
+          --delete
+
+      - echo "File synchronization completed successfully"
+
+  post_build:
+    commands:
+      - echo "Post-build phase started on $(date)"
+
+      # Configure S3 bucket for static website hosting (only for production)
+      - |
+        if [ "$DEPLOY_FOLDER" = "production" ]; then
+          echo "Configuring S3 bucket for static website hosting..."
+          aws s3 website "s3://$S3_BUCKET/$DEPLOY_FOLDER/" \
+            --index-document index.html \
+            --error-document index.html || echo "Note: Website configuration may require bucket-level permissions"
+        else
+          echo "Skipping website configuration for non-production environment"
+        fi
+
+      - echo "========================================="
+      - echo "Deployment completed successfully!"
+      - echo "Environment: $DEPLOY_FOLDER"
+      - echo "Branch: $BRANCH_NAME"
+      - echo "S3 Location: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
+      - |
+        if [ "$DEPLOY_FOLDER" = "production" ]; then
+          echo "Website URL: http://$S3_BUCKET.s3-website-$(aws configure get region).amazonaws.com/$DEPLOY_FOLDER/"
+        fi
+      - echo "Deployment timestamp: $(date)"
+      - echo "========================================="
+
+artifacts:
+  files:
+    - '**/*'
+  name: website-build-$(date +%Y%m%d-%H%M%S)
+
+cache:
+  paths: []
