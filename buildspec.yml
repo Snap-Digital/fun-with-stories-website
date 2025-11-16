@@ -9,7 +9,7 @@ version: 0.2
 env:
   variables:
     # Set this in CodeBuild project environment variables
-    # S3_BUCKET: "your-bucket-name"
+    S3_BUCKET: "fws-website"
   git-credential-helper: yes
 
 phases:
