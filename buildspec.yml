@@ -35,7 +35,6 @@ phases:
           BRANCH_NAME="main"
         fi
         echo "Detected branch: $BRANCH_NAME"
-
       - |
         # Map branch to deployment folder
         case "$BRANCH_NAME" in
@@ -54,10 +53,8 @@ phases:
             ;;
         esac
         echo "Deployment folder: $DEPLOY_FOLDER"
-
       - echo "S3 Bucket: $S3_BUCKET"
       - echo "Deployment target: s3://$S3_BUCKET/$DEPLOY_FOLDER/"
-
       - |
         # Verify S3 bucket exists and is accessible
         if aws s3 ls "s3://$S3_BUCKET" > /dev/null 2>&1; then
@@ -71,12 +68,9 @@ phases:
     commands:
       - echo "Build phase started on $(date)"
       - echo "Preparing files for deployment to $DEPLOY_FOLDER environment..."
-
       - echo "Files to be deployed:"
       - ls -lah
-
       - echo "Syncing files to S3 with metadata and cache-control headers..."
-
       # Sync HTML files with short cache (5 minutes)
       - |
         echo "Uploading HTML files..."
@@ -87,7 +81,6 @@ phases:
           --cache-control "public, max-age=300" \
           --metadata-directive REPLACE \
           --delete
-
       # Sync CSS files with long cache (1 week)
       - |
         echo "Uploading CSS files..."
@@ -98,7 +91,6 @@ phases:
           --cache-control "public, max-age=604800" \
           --metadata-directive REPLACE \
           --delete
-
       # Sync JavaScript files with long cache (1 week)
       - |
         echo "Uploading JavaScript files..."
@@ -109,7 +101,6 @@ phases:
           --cache-control "public, max-age=604800" \
           --metadata-directive REPLACE \
           --delete
-
       # Sync PNG images with long cache (30 days)
       - |
         echo "Uploading PNG images..."
@@ -120,7 +111,6 @@ phases:
           --cache-control "public, max-age=2592000" \
           --metadata-directive REPLACE \
           --delete
-
       # Sync JPG/JPEG images with long cache (30 days)
       - |
         echo "Uploading JPG/JPEG images..."
@@ -132,7 +122,6 @@ phases:
           --cache-control "public, max-age=2592000" \
           --metadata-directive REPLACE \
           --delete
-
       # Sync other files (CNAME, etc.) with default settings
       - |
         echo "Uploading other files..."
@@ -148,13 +137,11 @@ phases:
           --exclude "buildspec.yml" \
           --exclude "README.md" \
           --delete
-
       - echo "File synchronization completed successfully"
 
   post_build:
     commands:
       - echo "Post-build phase started on $(date)"
-
       # Configure S3 bucket for static website hosting (only for production)
       - |
         if [ "$DEPLOY_FOLDER" = "production" ]; then
@@ -165,7 +152,6 @@ phases:
         else
           echo "Skipping website configuration for non-production environment"
         fi
-
       - echo "========================================="
       - echo "Deployment completed successfully!"
       - echo "Environment: $DEPLOY_FOLDER"
